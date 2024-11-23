@@ -4,7 +4,7 @@ import matplotlib.cm as cm
 import numpy as np
 
 #散布図の作成（特徴量まで含めてすべて）
-def plot_all(results_df,thresholds, colums_list, data_ex):
+def plot_all(abnormal_scores,thresholds, colums_list, data_ex):
 
     #異常スコアの出力
     #図の大きさを指定
@@ -17,27 +17,27 @@ def plot_all(results_df,thresholds, colums_list, data_ex):
     ax1.tick_params(axis='both', which='major', labelsize=30)
 
     #正常スコアと異常スコア
-    ax1.scatter(results_df["measurement_date"], results_df["anomaly_score"], c='blue', marker='o', edgecolor='k')
+    ax1.scatter(abnormal_scores["measurement_date"], abnormal_scores["anomaly_score"], c='blue', marker='o', edgecolor='k')
     # 各期間の異常スコアの閾値を描画
 
     # measurement_date の最小値と最大値を取得
-    min_date = results_df["measurement_date"].min()
-    max_date = results_df["measurement_date"].max()
-    for threshold in thresholds:
+    min_date = abnormal_scores["measurement_date"].min()
+    max_date = abnormal_scores["measurement_date"].max()
+    for term, threshold in thresholds.items():
         # test_start と test_end を datetime 型に変換
         test_start = pd.to_datetime(threshold['test_start'])
         test_end = pd.to_datetime(threshold['test_end'])
         relative_start = (test_start - min_date) / (max_date - min_date)
         relative_end = (test_end - min_date) / (max_date - min_date)
         
-        ax1.axhline(y=threshold['threshold'],xmin=relative_start, xmax=relative_end,color='red', linestyle='--', label=f"Threshold (Term {threshold['term']})", linewidth = 10)
+        ax1.axhline(y=threshold['threshold_data'],xmin=relative_start, xmax=relative_end,color='red', linestyle='--', label=f"Threshold (Term {term})", linewidth = 10)
     
     # ラベルの設定
     ax1.set_ylabel('Abnormality')
 
 
     start_date = pd.to_datetime("2018-06-01")
-    end_date = pd.to_datetime("2018-10-01")
+    end_date = pd.to_datetime("2018-09-01")
     data_ex = data_ex[(data_ex["measurement_date"] >= start_date) & (data_ex["measurement_date"] <= end_date)]
     
     # 元の特徴量の時系列ごとのデータ
@@ -51,41 +51,7 @@ def plot_all(results_df,thresholds, colums_list, data_ex):
 
 
 
-#散布図の作成（予測特徴量値と元データの特徴量値）
-def plot_predict(traindata_model_df, colums_list, data_ex):
 
-    #異常スコアの出力
-    #図の大きさを指定
-    fig = plt.figure(figsize=(60,200))
-    #はじめのサブプロットの作成（異常スコア）
-
-    # 各期間の異常スコアの閾値を描画
-
-    # measurement_date の最小値と最大値を取得
-    min_date = data_ex["measurement_date"].min()
-    max_date = data_ex["measurement_date"].max()
-
-    start_date = pd.to_datetime("2016-06-01")
-    end_date = pd.to_datetime("2018-09-01")
-    data_ex = data_ex[(data_ex["measurement_date"] >= start_date) & (data_ex["measurement_date"] <= end_date)]
-
-    print(traindata_model_df.shape)
-    print(data_ex.shape)
-    
-    # 元の特徴量の時系列ごとのデータ
-    for i, column in enumerate (colums_list):
-        ax = fig.add_subplot(23,1,2*i+1)
-        ax.scatter(data_ex["measurement_date"],data_ex[column], color='b')
-        ax.set_xlabel('time')
-        ax.set_title(column + ":origin")
-        ax.tick_params(axis='both', which='major', labelsize=30)
-        ax.legend()
-
-        ax = fig.add_subplot(23,1,2*i+2)
-        ax.scatter(traindata_model_df["measurement_date"],traindata_model_df[column], color='b')
-        ax.set_xlabel('time')
-        ax.set_title(column + " : 元データに対する予測値")
-        ax.legend()
 
 
 

@@ -7,6 +7,8 @@ import gc
 import joblib
 from sklearn import preprocessing
 
+import config
+
 
 # 生データの読み込みおよびデータの加工
 def load_data():
@@ -179,14 +181,8 @@ def data_model(final_data):
     
     
     data_model=data_ADP555[data_ADP555["id"]=="9748019T-325"]
-    colums_list=["processor_unit_units_status_cpu_board_cpu_fan","processor_unit_units_status_cpu_board_cpu_bd_fan1"
-             ,"processor_unit_units_status_cpu_board_cpu_bd_fan2","processor_unit_units_status_cpu_board_cpu_bd_temp"
-             ,"processor_unit_units_status_cpu_board_cpu_core_temp","processor_unit_units_status_cpu_board_gpu_core_temp"
-             ,"processor_unit_units_status_cpu_board_cpu_core_vol","processor_unit_units_status_cpu_board_cpu_bd_vbat"
-             ,"processor_unit_units_status_cpu_board_cpu_bd_p3_3v","processor_unit_units_status_cpu_board_cpu_bd_p5v"
-             ,"processor_unit_units_status_cpu_board_cpu_bd_p12v"]
     
-    return data_model, colums_list
+    return data_model
 
 
 #欠損値や標準化などの処理
@@ -218,13 +214,7 @@ def data_complete():
     # キャッシュファイルが存在すれば、それを読み込む
     if os.path.exists(cache_file_ex) and os.path.exists(cache_file_original):
         print("キャッシュファイルからデータを読み込みます")
-        colums_list=["processor_unit_units_status_cpu_board_cpu_fan","processor_unit_units_status_cpu_board_cpu_bd_fan1"
-             ,"processor_unit_units_status_cpu_board_cpu_bd_fan2","processor_unit_units_status_cpu_board_cpu_bd_temp"
-             ,"processor_unit_units_status_cpu_board_cpu_core_temp","processor_unit_units_status_cpu_board_gpu_core_temp"
-             ,"processor_unit_units_status_cpu_board_cpu_core_vol","processor_unit_units_status_cpu_board_cpu_bd_vbat"
-             ,"processor_unit_units_status_cpu_board_cpu_bd_p3_3v","processor_unit_units_status_cpu_board_cpu_bd_p5v"
-             ,"processor_unit_units_status_cpu_board_cpu_bd_p12v"]
-        return colums_list,joblib.load(cache_file_ex), joblib.load(cache_file_original)
+        return joblib.load(cache_file_ex), joblib.load(cache_file_original)
 
     # キャッシュファイルがない場合、初回データ処理を行う
     print("初回データ処理を行います")
@@ -233,13 +223,20 @@ def data_complete():
     final_data = load_data()
 
     #実験に使用するインスタンスのみのデータを抜き取る
-    data_original, colums_list = data_model(final_data)
+    data_original = data_model(final_data)
+
+    # measurement_date列を除いたデータをfloat32に変換
+    for col in data_original.columns:
+        print(f"name:{col},type{type(data_original[col].iloc[0])}")
+        if col != "measurement_date" and type(data_original[col].iloc[0]) == "string":
+            data_original[col] = data_original[col].astype(np.float32)
 
     #標準化や欠損値処理を施す
-    data_ex = data_process(data_original,colums_list)
+    data_ex = data_process(data_original,config.columns_list)
 
     #originalデータの期間を指定する
     data_original = data_original[data_original["measurement_date"] >= "2017-12-01"]
+
 
     #ここまででデータの加工は終了
     #データの保存
@@ -247,5 +244,5 @@ def data_complete():
     joblib.dump(data_ex, cache_file_ex)
     joblib.dump(data_original,cache_file_original)
 
-    return colums_list, data_ex, data_original
+    return data_ex, data_original
     

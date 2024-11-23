@@ -18,6 +18,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
 
 from .. import model_basic
+from ... import config
 
 def search_model(initializer, X_train, error_threshold, max_epochs, early_stopping_params, units, loss_array ,period, num_initializations=4):
     best_model = None
@@ -81,66 +82,9 @@ def search_model(initializer, X_train, error_threshold, max_epochs, early_stoppi
 
 
 
-#　各実験ごとのモデルから特徴量ごとの予測再構成誤差と、トレーニング再構成誤差を返す関数
-def analysis_error_per_features(result_per_ex, error_per_traindata, error_per_predictdata,abnormal_values ,train_data, test_data, colums_list,period):
-    
-    error_per_traindata[period] = {}
-    error_per_predictdata[period] = {}
-    abnormal_values[period] = {}
-
-    #各手法ごとに処理を行う
-    for key, value in result_per_ex.items():
-        model = value
-
-        #テストデータの予測値
-        result_data = model.predict(test_data)
-        #トレーニングデータの再構成値
-        traindata_model = model.predict(train_data)
-
-        #再構築データ数
-        print("再構築データ数 : " + str(len(traindata_model)))
-    
-        #pandas形式へ変換
-        train_data = pd.DataFrame(train_data, columns=colums_list)
-        print(f"train_dataの構造：{train_data.shape}")
-
-        test_data = pd.DataFrame(test_data,columns=colums_list)
-        print(f"test_dataの構造：{test_data.shape}")
-
-        result_data = pd.DataFrame(result_data,columns=colums_list)
-        print(f"result_dataの構造：{result_data.shape}")
-
-        traindata_model = pd.DataFrame(traindata_model, columns=colums_list)
-        print(f"traindata_modelの構造：{traindata_model.shape}")
-
-        #  print(f"手法{key}のモデル結果：{result_data}")
-
-    
-        #異常値の算出
-        abnormal_value = model_basic.biggest_threshold(test_data,result_data)
-        print(f"abnormal_value:{abnormal_value}")
-
-        #　各特徴量における再構成誤差を算出する
-        errors_predict = model_basic.reconstruction_error_per_feature(test_data,result_data)
-        print(f"errors_predict:{errors_predict}")
-
-        # 閾値として選ばれたデータの各特徴量ごとの値を算出する
-        errors_train = model_basic.biggest_threshold_per_features(train_data, traindata_model)
-        print(f"errors_train:{errors_train}")
-
-        error_per_traindata[period][key] = errors_train
-
-        error_per_predictdata[period][key] = errors_predict
-
-        abnormal_values[period][key] = abnormal_value
-
-    return error_per_predictdata, error_per_traindata, abnormal_values
 
 
 
-
-#15期間においてモデルを作成し、結果を格納する関数
-#各期間においてほしい情報は、日付に対応する異常スコア、閾値
 def result(data_ex, colums_list,  initializer,error_threshold, max_epochs, early_stopping_params, units, num = 4  ):
 
     #異常スコアを格納する配列
