@@ -19,6 +19,7 @@ def search_model(params,model, train_data):
 
     # シード値の抜き出し
     seeds = params["seeds"]
+    learning_rate = params["learning_rate"]
 
 
     #初期値振りを4回行い学習を開始する
@@ -33,7 +34,7 @@ def search_model(params,model, train_data):
         print(f"シード値：{seeds[i]}")
 
         # オプティマイザを作成
-        optimizer = tf.keras.optimizers.Adam()
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         # オプティマイザの変数を初期化
         grads = [tf.zeros_like(var) for var in model.trainable_weights]
         optimizer.apply_gradients(zip(grads, model.trainable_weights))

@@ -42,8 +42,6 @@ def calcurate_reconstraction_error_per_features(y_true, y_pred):
     #各特徴量ごとに平均をとる 
     mean_errors_per_feature = np.mean(reconstraction_errors,axis=0)
 
-    #1行11列にする
-    mean_errors_per_feature = mean_errors_per_feature.reshape(1,-1)
     
     return mean_errors_per_feature
 
@@ -118,13 +116,14 @@ def learn_model(params, model , train_data, optimizer):
     detail_log = params["detail_log"]
 
     #２，計算のための配列を準備する
-    #全体の再構成誤差を２回分保持しておく配列
-    value_reconstractions = [float("inf"), float("inf")]
     # 全体の変化分を保持しておく変数
     value_change = 0
-    when = ["now","before"]
-    #各特徴量ごとの再構成誤差の値を２回分保持しておく配列
-    value_reconstractions_per_features = pd.DataFrame(float("inf"),index=when, columns=config.columns_list)
+
+    # 最も良かった再構成誤差を保持する変数
+    best_errors = float("inf")
+    best_weights = None  # 最良モデルの重みを保持する変数
+    #最も良かった各特徴量ごとの再構成誤差の値を保持しておく配列
+    value_reconstractions_per_features_best = pd.Series(float("inf"), index=config.columns_list)
     #各特徴量ごとの変化分を保持しておく配列
     value_change_per_features = pd.DataFrame(columns=config.columns_list)
     #閾値を何回満たしているのかを保持する変数
@@ -164,46 +163,36 @@ def learn_model(params, model , train_data, optimizer):
         train_predict_data = model(train_data,training = False)
         # １２，モデル全体の再構成誤差の計算
         errors = root_mean_squared_error(train_data, train_predict_data)
-        # １３，モデル全体の再構成誤差を適切に配列に格納する
-        value_reconstractions[1] = value_reconstractions[0]
-        value_reconstractions[0] = errors
-
-        # 全体の再構成誤差の変化分を計算する
-        value_change = value_reconstractions[1] - value_reconstractions[0]
 
 
         # １３，各特徴量ごとの再構成誤差を計算する
         feature_errors = calcurate_reconstraction_error_per_features(train_data,train_predict_data)
-
-        # その平均値をとる
-
-        #１４，各特徴量ごとの再構成誤差を適切に配列に格納する
+        feature_errors = pd.Series(feature_errors, index=config.columns_list)
         
-        value_reconstractions_per_features.loc["before"] = value_reconstractions_per_features.loc["now"]
-        value_reconstractions_per_features.loc["now"] = feature_errors
 
         #１５，各特徴量ごとに再構成誤差の変化分を計算する
-        value_change_per_features = value_reconstractions_per_features.loc["before"] - value_reconstractions_per_features.loc["now"]
+        value_change_per_features = value_reconstractions_per_features_best - feature_errors
+        
 
-        # ログの排出
-        if detail_log:
-            print(f"バッチ数：{len_batch}")
-            print(f"{epoch+1}/{max_epochs}での再構成誤差：{errors},変化量：{value_change}")
-            print("-----------------------------------------------------------------------------------")
+        #１６，これまでの再構成誤差と最良の再構成誤差より更新幅を計算する
+        value_change = best_errors - errors
 
-
-        #１６，全体の再構成誤差の変化値が閾値を満たしているか確認する
         if value_change < min_delta:
             count += 1
         else:
+            #基準値の更新
+            best_errors = errors
             count = 0
+             # **最良時点のモデルの重みを保存**
+            best_weights = model.get_weights() 
         
         #１７，各特徴量ごとに再構成誤差の変化値が閾値を満たしているか確認する
         for feature in value_change_per_features.index:
-            if abs(value_change_per_features[feature]) < min_delta:
+            if value_change_per_features[feature] < min_delta:
                 learning_epoch_per_features[feature] += 1
             else:
                 learning_epoch_per_features[feature] = 0
+                value_reconstractions_per_features_best[feature] = feature_errors[feature]
 
         #countが1000になるのならば学習を終了する
         if count == patience:
@@ -212,9 +201,21 @@ def learn_model(params, model , train_data, optimizer):
 
             break
 
+        # ログの排出
+        if detail_log:
+            print(f"バッチ数：{len_batch}")
+            print(f"{epoch+1}/{max_epochs}での再構成誤差：{errors},変化量：{value_change}")
+            print(f"best_errors:{best_errors}")
+            print(f"条件満たし回数：{count}")
+            print("-----------------------------------------------------------------------------------")
+
         
     if flag_early_stop == False:
         print(f"{patience}回条件を満たさなかったので{max_epochs}回学習を行いました")
+    
+    # **最良時点のモデル重みを設定**
+    if best_weights is not None:
+        model.set_weights(best_weights)  # 保存しておいた最良時点の重みをモデルに適用
     
     return model, learning_epoch_per_features
 
