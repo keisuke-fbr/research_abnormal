@@ -163,6 +163,19 @@ def load_data():
     modified_data["tag"] = modified_data["id"]+"-"+modified_data["measurement_ymd"]
 
     final_data = modified_data[modified_data["tag"].isin(target_id_date)]
+
+    # 実験に使用するインスタンスを抜き出す
+    data_ADP555 = final_data[((final_data["processor_unit_units_hardware_info_serial_number_cpu_bd"].str[1:3])
+                          .isin(["16","15","14","13"]))]    
+    final_data = data_ADP555[data_ADP555["id"]=="9748019T-325"]
+
+    #実装に必要なカラムと取得日時のカラムの作成
+    final_data = final_data[config.columns_list+["measurement_date"]]
+
+    #欠損値処理（欠損値があった場合は落とす）
+    final_data=final_data.dropna(how='any')
+    final_data=final_data.reset_index(drop = True)
+    final_data["measurement_date"]=pd.to_datetime(final_data["measurement_date"], format='%Y/%m/%d %H:%M:%S')
     
 
     print("データをキャッシュに保存します")
@@ -170,19 +183,6 @@ def load_data():
 
     return final_data
     
-
-#実験に使用するインスタンスを抜き出したデータを作成する
-def data_model(final_data):
-    final_data = final_data
-
-    data_ADP555 = final_data[((final_data["processor_unit_units_hardware_info_serial_number_cpu_bd"].str[1:3])
-                          .isin(["16","15","14","13"]))]
-
-    
-    
-    data_model=data_ADP555[data_ADP555["id"]=="9748019T-325"]
-    
-    return data_model
 
 
 #欠損値や標準化などの処理
@@ -193,16 +193,7 @@ def data_process(data_model, colums_list):
     #わずかな値を加え0から少しずらす
     data_model[colums_list] += 0.00001
 
-    #実装に必要なカラムと取得日時のカラムの作成
-    data_ex = data_model[colums_list+["measurement_date"]]
-
-    #欠損値処理（欠損値があった場合は落とす）
-    data_ex=data_ex.dropna(how='any')
-    data_ex=data_ex.reset_index(drop = True)
-    data_ex["measurement_date"]=pd.to_datetime(data_ex["measurement_date"], format='%Y/%m/%d %H:%M:%S')
-
-    return data_ex
-
+    return data_model
 
 
 #ここまでの処理をまとめ一つの関数にする
@@ -221,29 +212,28 @@ def data_complete():
     print("初回データ処理を行います")
     
     #データの読み込み及び加工データの取得
-    final_data = load_data()
-
-    #実験に使用するインスタンスのみのデータを抜き取る
-    data_original = data_model(final_data)
+    data_model_df = load_data()
 
     # measurement_date列を除いたデータをfloat32に変換
-    for col in data_original.columns:
-        print(f"name:{col},type{type(data_original[col].iloc[0])}")
-        if col != "measurement_date" and type(data_original[col].iloc[0]) == "string":
-            data_original[col] = data_original[col].astype(np.float32)
+    for col in data_model_df.columns:
+        print(f"name:{col},type{type(data_model_df[col].iloc[0])}")
+        if col != "measurement_date" and type(data_model_df[col].iloc[0]) == "string":
+            data_model_df[col] = data_model_df[col].astype(np.float32)
 
-    #標準化や欠損値処理を施す
-    data_ex = data_process(data_original,config.columns_list)
+    # ★★★ 正規化前データのコピーを保持 ★★★
+    data_original = data_model_df.copy()
+
+    #標準化を施す
+    data_ex = data_process(data_model_df, config.columns_list)
 
     #originalデータの期間を指定する
     data_original = data_original[data_original["measurement_date"] >= "2017-12-01"]
-
 
     #ここまででデータの加工は終了
     #データの保存
     print("データをキャッシュに保存します")
     joblib.dump(data_ex, cache_file_ex)
-    joblib.dump(data_original,cache_file_original)
+    joblib.dump(data_original, cache_file_original)
 
     return data_ex, data_original
     

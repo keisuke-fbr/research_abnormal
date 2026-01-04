@@ -1,0 +1,43 @@
+Date : 2025-06-08 17:27:24
+Directory : c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip
+Total : 13 files,  2350 codes, 155 comments, 234 blanks, all 2739 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| JSON     |          5 |      1,589 |          0 |          5 |      1,594 |
+| Python   |          4 |        465 |        155 |        225 |        845 |
+| Log      |          4 |        296 |          0 |          4 |        300 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                                          | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                                             |         13 |      2,350 |        155 |        234 |      2,739 |
+| before                                                                                                                                        |          9 |      1,885 |          0 |          9 |      1,894 |
+| before\single_node_(40,10,31,10,43,10)                                                                                                        |          9 |      1,885 |          0 |          9 |      1,894 |
+| custom_Class                                                                                                                                  |          1 |         44 |          3 |         14 |         61 |
+| functions                                                                                                                                     |          3 |        421 |        152 |        211 |        784 |
++-----------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                                                                      | language | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\concat.ipynb      | JSON     |        199 |          0 |          1 |        200 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\experiment1.ipynb | JSON     |        406 |          0 |          1 |        407 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\experiment2.ipynb | JSON     |        367 |          0 |          1 |        368 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\experiment3.ipynb | JSON     |        372 |          0 |          1 |        373 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\log_seed_50.log   | Log      |         74 |          0 |          1 |         75 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\log_seed_51.log   | Log      |         74 |          0 |          1 |         75 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\log_seed_52.log   | Log      |         74 |          0 |          1 |         75 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\log_seed_53.log   | Log      |         74 |          0 |          1 |         75 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\before\single_node_(40,10,31,10,43,10)\plot.ipynb        | JSON     |        245 |          0 |          1 |        246 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\custom_Class\custom_earlystopping.py                     | Python   |         44 |          3 |         14 |         61 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\functions\__init__.py                                    | Python   |          0 |          0 |          1 |          1 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\functions\model_basic.py                                 | Python   |        151 |         75 |         77 |        303 |
+| c:\Users\keisu\Desktop\研究元ファイル\abnormal\research_abnormal\develop\search\search_skip\functions\model_function.py                              | Python   |        270 |         77 |        133 |        480 |
+| Total                                                                                                                                         |          |      2,350 |        155 |        234 |      2,739 |
++-----------------------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
