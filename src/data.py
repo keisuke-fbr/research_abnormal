@@ -14,6 +14,8 @@ import config
 def load_data():
     # キャッシュファイルのパスを設定
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    cache_dir = os.path.join(current_dir, '../cache')
+    os.makedirs(cache_dir, exist_ok=True)
     cache_file = os.path.join(current_dir, '../cache/cached_data.joblib')
 
     # キャッシュファイルが存在すれば、それを読み込む
