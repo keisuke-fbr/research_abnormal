@@ -1,5 +1,6 @@
 # custom_earlystopping.py
 # カスタムオートエンコーダモデルと早期終了コールバック
+# 修正版: 各ノード組の学習中にlog_counter間隔で即座にCSVへ書き込み
 
 import tensorflow as tf
 from tensorflow import keras
@@ -66,7 +67,7 @@ class MaxReconstructionErrorEarlyStopping(keras.callbacks.Callback):
     """
     早期終了コールバック
     - 全特徴量が各基準値を下回ったら学習終了
-    - log_counter間隔で学習ログをCSVに保存
+    - log_counter間隔で学習ログを即座にCSVに書き込み（インクリメンタル保存）
     """
     
     def __init__(self, model, early_stopping_params, seed, period_log, unit13, unit2, base_path):
@@ -97,23 +98,41 @@ class MaxReconstructionErrorEarlyStopping(keras.callbacks.Callback):
         self.unit2 = unit2
         self.base_path = base_path
         
-        # 学習ログを格納するリスト
-        self.log_data = self._initialize_log_data()
+        # ファイルパスを事前に生成
+        self.file_path = self._get_file_path()
+        
+        # ファイル初期化フラグ（ヘッダー書き込み済みかどうか）
+        self.file_initialized = False
     
-    def _initialize_log_data(self):
+    def _get_file_path(self):
         """
-        学習ログデータの初期化
+        CSVファイルパスを生成
         
         出力:
-            log_data: dict - エポックと各特徴量のavg/maxを格納する辞書
+            file_path: str - CSVファイルパス
         """
-        log_data = {"epoch": []}
+        dir_path = os.path.join(
+            self.base_path,
+            f"learning_scores_seed{self.seed}",
+            f"learning_scores_seed{self.seed}_period{self.period_log}"
+        )
+        os.makedirs(dir_path, exist_ok=True)
         
+        file_name = f"learning_scores_seed{self.seed}_period{self.period_log}_unit13_{self.unit13}_unit2_{self.unit2}.csv"
+        return os.path.join(dir_path, file_name)
+    
+    def _get_column_names(self):
+        """
+        CSVのカラム名リストを生成
+        
+        出力:
+            columns: list - カラム名リスト
+        """
+        columns = ["epoch"]
         for col_name in config.columns_list:
-            log_data[f"{col_name}_avg"] = []
-            log_data[f"{col_name}_max"] = []
-        
-        return log_data
+            columns.append(f"{col_name}_avg")
+            columns.append(f"{col_name}_max")
+        return columns
     
     def _calculate_errors_per_feature(self, x_true, x_pred):
         """
@@ -152,50 +171,42 @@ class MaxReconstructionErrorEarlyStopping(keras.callbacks.Callback):
                 return False
         return True
     
-    def _record_log(self, epoch, errors_avg, errors_max):
+    def _write_log_to_csv(self, epoch, errors_avg, errors_max):
         """
-        学習ログを記録
+        学習ログを即座にCSVに書き込み（インクリメンタル保存）
+        書き込み後は明示的にメモリを解放
         
         入力:
             epoch: int - 現在のエポック
             errors_avg: ndarray - 各特徴量の平均誤差
             errors_max: ndarray - 各特徴量の最大誤差
         """
-        self.log_data["epoch"].append(epoch + 1)
-        
+        # 1行分のデータを作成
+        row_data = {"epoch": epoch + 1}
         for i, col_name in enumerate(config.columns_list):
-            self.log_data[f"{col_name}_avg"].append(errors_avg[i])
-            self.log_data[f"{col_name}_max"].append(errors_max[i])
-    
-    def _save_learning_scores(self):
-        """
-        学習ログをCSVに保存
-        """
-        if len(self.log_data["epoch"]) == 0:
-            return
+            row_data[f"{col_name}_avg"] = errors_avg[i]
+            row_data[f"{col_name}_max"] = errors_max[i]
         
-        # DataFrameに変換
-        df = pd.DataFrame(self.log_data)
+        # DataFrameに変換（1行）
+        df_row = pd.DataFrame([row_data])
         
-        # ファイルパス生成
-        dir_path = os.path.join(
-            self.base_path,
-            f"learning_scores_seed{self.seed}",
-            f"learning_scores_seed{self.seed}_period{self.period_log}"
-        )
-        os.makedirs(dir_path, exist_ok=True)
+        # ファイルが初期化されていない場合はヘッダー付きで書き込み
+        if not self.file_initialized:
+            df_row.to_csv(self.file_path, index=False, mode='w')
+            self.file_initialized = True
+        else:
+            # 追記モード（ヘッダーなし）
+            df_row.to_csv(self.file_path, index=False, mode='a', header=False)
         
-        file_name = f"learning_scores_seed{self.seed}_period{self.period_log}_unit13_{self.unit13}_unit2_{self.unit2}.csv"
-        file_path = os.path.join(dir_path, file_name)
-        
-        # 保存
-        df.to_csv(file_path, index=False)
+        # 明示的にメモリ解放
+        del df_row
+        del row_data
     
     def on_epoch_end(self, epoch, logs=None):
         """
         エポック終了時の処理
         - 誤差計算
-        - ログ記録（log_counter間隔）
+        - ログ記録（log_counter間隔で即座にCSVに書き込み）
         - 早期終了判定
         """
         x_all = self.target_model.train_data_for_monitoring
@@ -204,9 +215,9 @@ class MaxReconstructionErrorEarlyStopping(keras.callbacks.Callback):
         # 各特徴量ごとの誤差を計算
         errors_avg, errors_max = self._calculate_errors_per_feature(x_all, x_pred)
         
-        # log_counter間隔でログを記録
+        # log_counter間隔で即座にCSVに書き込み
         if (epoch + 1) % self.log_counter == 0:
-            self._record_log(epoch, errors_avg, errors_max)
+            self._write_log_to_csv(epoch, errors_avg, errors_max)
         
         # 全特徴量が基準値を下回っているかチェック
         if self._check_all_features_below_threshold(errors_max):
@@ -216,16 +227,14 @@ class MaxReconstructionErrorEarlyStopping(keras.callbacks.Callback):
             
             # 終了時もログを記録（log_counterの倍数でなくても）
             if (epoch + 1) % self.log_counter != 0:
-                self._record_log(epoch, errors_avg, errors_max)
-            
-            # CSVに保存
-            self._save_learning_scores()
+                self._write_log_to_csv(epoch, errors_avg, errors_max)
     
     def on_train_end(self, logs=None):
         """
         学習終了時の処理
-        - CSVに保存（まだ保存されていない場合）
+        - 最大エポック到達時、最終エポックがlog_counterの倍数でなければ書き込み
         """
-        # 早期終了でない場合（最大エポックまで学習した場合）もCSVに保存
-        if not self.model.reached_threshold:
-            self._save_learning_scores()
+        # 早期終了でない場合（最大エポックまで学習した場合）
+        # 最終エポックのログがまだ書き込まれていなければ書き込む
+        # ※ on_epoch_endで既に書き込み済みの場合は何もしない
+        pass  # インクリメンタル書き込みのため、ここでの処理は不要

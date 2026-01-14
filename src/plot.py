@@ -260,6 +260,161 @@ def plot_errors_per_data(errors_per_datas, xlim,ylim):
     fig.show()
 
 
+def plot_network_weights(weight_csv, figsize_scale=1.0, node_size=800, font_size=8, 
+                         weight_font_size=6, bias_font_size=6, cmap_name="coolwarm"):
+    """
+    重みCSVを読み込み、ネットワークを可視化
+    
+    入力:
+        weight_csv: str - 重みCSVファイルパス
+        figsize_scale: float - 図のサイズスケール（大きいネットワーク用）
+        node_size: int - ノードのサイズ
+        font_size: int - ノード番号のフォントサイズ
+        weight_font_size: int - 重み数値のフォントサイズ
+        bias_font_size: int - バイアス数値のフォントサイズ
+        cmap_name: str - カラーマップ名
+    
+    備考:
+        - 線の色: 重みが大きいほど赤、小さいほど青
+        - 線の中央に重みの数値を表示
+        - ノードの横にバイアス値を表示
+    """
+    setup_japanese_font()
+    
+    df = pd.read_csv(weight_csv)
+    if df.empty:
+        print("重みデータが空のため、可視化をスキップします。")
+        return
+    
+    # 重みとバイアスを分離
+    weights_df = df[df["type"] == "weight"]
+    biases_df = df[df["type"] == "bias"]
+    
+    # 層のインデックスを取得
+    layer_indices = sorted(weights_df["layer_index"].unique().tolist())
+    
+    # 各層のノード数を計算
+    layer_sizes = []
+    for idx in layer_indices:
+        layer_df = weights_df[weights_df["layer_index"] == idx]
+        if idx == layer_indices[0]:
+            # 最初の層：入力ノード数を追加
+            layer_sizes.append(int(layer_df["from_node"].max()))
+        # 出力ノード数を追加
+        layer_sizes.append(int(layer_df["to_node"].max()))
+    
+    num_layers = len(layer_sizes)
+    max_nodes = max(layer_sizes)
+    
+    # 図のサイズを動的に計算
+    fig_width = max(12, num_layers * 3) * figsize_scale
+    fig_height = max(8, max_nodes * 0.8) * figsize_scale
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    ax.set_facecolor("#f8f8f8")
+    
+    # ノード配置（各層を等間隔に配置）
+    layer_x_positions = np.linspace(0, 1, num_layers)
+    node_positions = {}
+    
+    for layer_idx, (x_pos, size) in enumerate(zip(layer_x_positions, layer_sizes)):
+        if size == 1:
+            y_positions = [0.5]
+        else:
+            # 上下に余白を持たせて配置
+            y_positions = np.linspace(0.1, 0.9, size)
+        
+        for node_idx in range(size):
+            # ノード番号は1始まり
+            node_positions[(layer_idx, node_idx + 1)] = (x_pos, y_positions[size - node_idx - 1])
+    
+    # 重みの正規化（色の範囲を決定）
+    all_weights = weights_df["weight"].values
+    max_abs_weight = np.abs(all_weights).max()
+    if max_abs_weight == 0:
+        max_abs_weight = 1.0
+    
+    cmap = cm.get_cmap(cmap_name)
+    
+    # エッジ（重み）の描画
+    for _, row in weights_df.iterrows():
+        layer_idx = int(row["layer_index"]) - 1  # 0始まりに変換
+        from_node = int(row["from_node"])
+        to_node = int(row["to_node"])
+        weight = float(row["weight"])
+        
+        # ノード位置を取得
+        x0, y0 = node_positions[(layer_idx, from_node)]
+        x1, y1 = node_positions[(layer_idx + 1, to_node)]
+        
+        # 色を計算（-max_abs ~ +max_abs を 0 ~ 1 に正規化）
+        normalized_weight = (weight + max_abs_weight) / (2 * max_abs_weight)
+        color = cmap(normalized_weight)
+        
+        # 線の太さを重みの絶対値に応じて調整
+        line_width = 0.5 + 2.0 * (abs(weight) / max_abs_weight)
+        
+        # 線を描画
+        ax.plot([x0, x1], [y0, y1], color=color, linewidth=line_width, alpha=0.7, zorder=1)
+        
+        # 線の中央に重みを表示（ネットワークが大きい場合は省略可能）
+        if max_nodes <= 20:
+            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+            ax.text(mx, my, f"{weight:.3f}", fontsize=weight_font_size, 
+                    ha="center", va="center", 
+                    bbox=dict(boxstyle="round,pad=0.1", facecolor="white", alpha=0.7, edgecolor="none"),
+                    zorder=4)
+    
+    # バイアスを辞書に整理（layer_index, to_node → bias値）
+    bias_dict = {}
+    for _, row in biases_df.iterrows():
+        layer_idx = int(row["layer_index"]) - 1  # 0始まりに変換
+        to_node = int(row["to_node"])
+        bias_dict[(layer_idx + 1, to_node)] = float(row["weight"])  # layer_idx+1は出力側の層
+    
+    # ノードの描画
+    for (layer_idx, node_idx), (x, y) in node_positions.items():
+        # ノードを描画
+        circle = plt.Circle((x, y), 0.02 * figsize_scale, color="white", 
+                             ec="black", linewidth=2, zorder=3)
+        ax.add_patch(circle)
+        
+        # ノード番号を表示
+        ax.text(x, y, str(node_idx), fontsize=font_size, 
+                ha="center", va="center", fontweight="bold", zorder=5)
+        
+        # バイアスを表示（該当するノードのみ）
+        if (layer_idx, node_idx) in bias_dict:
+            bias_value = bias_dict[(layer_idx, node_idx)]
+            ax.text(x + 0.03, y + 0.03, f"[{bias_value:.3f}]", 
+                    fontsize=bias_font_size, ha="left", va="bottom",
+                    color="darkgreen", fontweight="bold", zorder=5)
+    
+    # 層のラベルを追加
+    layer_labels = ["入力層"] + [f"中間層{i}" for i in range(1, num_layers - 1)] + ["出力層"]
+    for layer_idx, (x_pos, label) in enumerate(zip(layer_x_positions, layer_labels)):
+        ax.text(x_pos, -0.05, label, fontsize=font_size + 2, 
+                ha="center", va="top", fontweight="bold")
+        ax.text(x_pos, -0.1, f"({layer_sizes[layer_idx]}ノード)", fontsize=font_size, 
+                ha="center", va="top", color="gray")
+    
+    # カラーバーを追加
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=-max_abs_weight, vmax=max_abs_weight))
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax, shrink=0.6, aspect=20, pad=0.02)
+    cbar.set_label("重みの値", fontsize=font_size + 2)
+    cbar.ax.tick_params(labelsize=font_size)
+    
+    # 軸の設定
+    ax.set_xlim(-0.1, 1.15)
+    ax.set_ylim(-0.15, 1.05)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.set_title("ネットワーク重みの可視化", fontsize=font_size + 6, fontweight="bold", pad=20)
+    
+    fig.tight_layout()
+    plt.show()
+
+
 
 # plot.py
 # 異常検知実験結果の可視化モジュール
